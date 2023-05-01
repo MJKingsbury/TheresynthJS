@@ -39,9 +39,10 @@ const App = () => {
       case "ModelPredictionsError" :
         caption.innerHTML = "Loading...";
         break;
+      case "LimHandsValueError"    :
       case "SubHandsValueError"    :
         if (isPlaying) {
-          caption.innerHTML = "Ensure Face And One Hand Are Clearly Visible";
+          caption.innerHTML = "Please Ensure Only One Hand Is Clearly Visible To Camera";
         }
         break;
       case "Paused"                :
@@ -74,7 +75,7 @@ const App = () => {
         </figure>
         </div>
       <div>
-        <Synth input={data} isTracking={isPlaying} tone={Tone}></Synth>
+        <Synth input={data} tone={Tone}></Synth>
       </div>
     </div>
   );

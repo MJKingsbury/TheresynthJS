@@ -7,7 +7,7 @@ export class HandTracker {
         this.params = {
             flipHorizontal: false,
             outputStride: 16,
-            imageScaleFactor: 1,
+            imageScaleFactor: 0.5,
             maxNumBoxes: 3,
             iouThreshold: 0.2,
             scoreThreshold: 0.5,
@@ -26,7 +26,7 @@ export class HandTracker {
                 this.model = lmodel
                 if (!this.model) {
                     console.warn("Model Not Loaded.");
-                    throw new Error("ModalLoadError");
+                    throw new Error("ModelLoadError");
                 }
                 else {
                     console.log("Model Loaded Successfully.");
@@ -57,12 +57,13 @@ export class HandTracker {
         this.video.style.height = "";
         this.model.detect(this.video)
             .then(predictions => {
-                if (predictions.length === 2) {
+                if (predictions.length === 1 || predictions.length === 2) {
                     let results = {};
                     let handsCount = 0;
                     for (const mark of predictions) {
                         if (mark.label !== "face") {
                             results.c = (mark.label === "closed");
+                            results.v = (mark.label === "pinch");
                             const mX = mark.bbox[0] + mark.bbox[2] / 2;
                             const mY = mark.bbox[1] + mark.bbox[3] / 2;
                             results.x = mX;
@@ -72,6 +73,9 @@ export class HandTracker {
                     }
                     if (results.c) {
                         this.setData("Paused");
+                    }
+                    else if (handsCount >= 2) {
+                        this.setData("LimHandsValueError");
                     }
                     else if (handsCount < 1) {
                         this.setData("SubHandsValueError");

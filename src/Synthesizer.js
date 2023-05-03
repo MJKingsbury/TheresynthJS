@@ -34,7 +34,7 @@ const notes = {
     4186.01 : "C8", 4434.92 : "C#8", 4698.63 : "D8", 4978.03 : "D#8", 5274.04 : "E8", 5587.65 : "F8", 
     5919.91 : "F#8", 6271.93 : "G8", 6644.88 : "G#8", 7040.01 : "A8", 7458.62 : "A#8", 7902.13 : "B8",
 };
-//Arrays of Keys - Perform Binary Search on these
+//Arrays of Keys
 const keys = [...Object.keys(notes).map(n => Number(n))];
 
 //<-- UTILITIES -->
@@ -45,7 +45,7 @@ const clip = (value, isFrequency) => {
     return value;
 }
 
-//Maps Coordinate Values to Frequency Values (0 -> 20000)
+//Maps Coordinate Values (20 -> 440) to Frequency Values (0 -> 20000)
 const mapFreq = (f) => { 
     const freq = 20000 * (1 - (f - 20) / (440 - 20));
     return clip(100 * Math.exp(freq / 4000), true);
@@ -54,7 +54,7 @@ const mapFreq = (f) => {
 //Maps Coordinate Values (30 -> 600) to Decibel Values (-12 -> 0)
 const mapVol = (v) => {
     const vol = 12 * ((v - 30) / (600 - 30));
-    return -12 + clip(vol);
+    return -12 + clip(vol, false);
 }
 
 //Get the next note after the current frequency value
@@ -76,87 +76,93 @@ export const Synth = ({input, tone}) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [frequency, setFrequency] = useState(0);
     const [volume, setVolume] = useState(-Infinity);
+
     const rerender = useRerender();
 
     useEffect(() => {
-        //Oscillators
-        const sinOsc = new tone.MonoSynth({
-            oscillator: {
-                type: "sine"
-            },
-            envelope: {
-                attack: 0.01,
-                decay: 0.25,
-                sustain: 0.25,
-                release: 0.8
+        try {
+            //Oscillators
+            const sinOsc = new tone.MonoSynth({
+                oscillator: {
+                    type: "sine"
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.25,
+                    sustain: 0.75,
+                    release: 0.05
+                }
+            });
+            const triOsc = new tone.MonoSynth({
+                oscillator: {
+                    type: "triangle"
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.25,
+                    sustain: 0.75,
+                    release: 0.05
+                }
+            });
+            const sawOsc = new tone.MonoSynth({
+                oscillator: {
+                    type: "sawtooth"
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.25,
+                    sustain: 0.75,
+                    release: 0.05
+                }
+            });
+            const sqrOsc = new tone.MonoSynth({
+                oscillator: {
+                    type: "square"
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.25,
+                    sustain: 0.75,
+                    release: 0.05
+                }
+            });
+            oscsList = [sinOsc, triOsc, sawOsc, sqrOsc];
+
+            //Effects
+            waveshaper = new tone.Chebyshev(10);
+            distortion = new tone.Distortion(0.75);
+            phaser = new tone.Phaser({frequency: 0.8, octaves: 2, baseFrequency: 300});
+            chorus = new tone.Chorus(3, 2.5, 0.5);
+            vibrato = new tone.Vibrato(3, 1);
+
+            waveshaper.set({wet: 0});
+            distortion.set({wet: 0});
+            phaser.set({wet: 0});
+            chorus.set({wet: 0});
+            vibrato.set({wet: 0});
+
+            chorus.start();
+
+            //Components
+            filter = new tone.Filter(5000, "lowpass", -24);
+            reverb = new tone.Reverb();
+            limiter = new tone.Limiter(0);
+            volnode = new tone.Volume(-Infinity);
+
+            //Connect Chain
+            for (const osc of oscsList) {
+                osc.chain(
+                    waveshaper, distortion, phaser, chorus, vibrato, filter, reverb, limiter, volnode, tone.Destination
+                );
             }
-        });
-        const triOsc = new tone.MonoSynth({
-            oscillator: {
-                type: "triangle"
-            },
-            envelope: {
-                attack: 0.01,
-                decay: 0.25,
-                sustain: 0.25,
-                release: 0.8
-            }
-        });
-        const sawOsc = new tone.MonoSynth({
-            oscillator: {
-                type: "sawtooth"
-            },
-            envelope: {
-                attack: 0.01,
-                decay: 0.25,
-                sustain: 0.25,
-                release: 0.8
-            }
-        });
-        const sqrOsc = new tone.MonoSynth({
-            oscillator: {
-                type: "square"
-            },
-            envelope: {
-                attack: 0.01,
-                decay: 0.25,
-                sustain: 0.25,
-                release: 0.8
-            }
-        });
-        oscsList = [sinOsc, triOsc, sawOsc, sqrOsc];
-
-        //Effects Chain
-        waveshaper = new tone.Chebyshev(10);
-        distortion = new tone.Distortion(0.75);
-        phaser = new tone.Phaser({frequency: 15, octaves: 3, baseFrequency: 1000});
-        chorus = new tone.Chorus(4, 2.5, 0.5);
-        vibrato = new tone.Vibrato(3, 1);
-
-        waveshaper.set({wet: 0});
-        distortion.set({wet: 0});
-        phaser.set({wet: 0});
-        chorus.set({wet: 0});
-        vibrato.set({wet: 0});
-
-        chorus.start();
-
-        //Components
-        filter = new tone.Filter(5000, "highpass", -12);
-        reverb = new tone.Reverb();
-        limiter = new tone.Limiter(0);
-        volnode = new tone.Volume(-Infinity);
-
-        //Connect Chain
-        for (const osc of oscsList) {
-            osc.chain(
-                waveshaper, distortion, phaser, chorus, vibrato, filter, reverb, limiter, volnode, tone.Destination
-            );
+            //Default Oscillator
+            console.log("Starting Oscillator");
+            oscillator = oscsList[0];
+            console.log(oscillator);
         }
-
-        //Default Oscillator
-        console.log("Starting Oscillator");
-        oscillator = oscsList[0];
+        catch(error) { 
+            console.warn(error) 
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -173,7 +179,7 @@ export const Synth = ({input, tone}) => {
                     }
                     else {
                         oscillator.setNote(frequency);
-                    }
+                    }    
                 }
                 else {
                     if (isFixed) {
@@ -192,11 +198,8 @@ export const Synth = ({input, tone}) => {
         }
     }, [input, isPlaying, isFixed, frequency, volume]);
 
-    const switchOsc = () => {
-        oscillator.triggerRelease();
+    const SwitchOsc = () => {
         const val = document.getElementById("osc-select").value;
-        oscillator = oscsList[val];
-        oscillator.triggerAttack(frequency);
         // eslint-disable-next-line
         switch (val) {
             case "0":
@@ -212,10 +215,17 @@ export const Synth = ({input, tone}) => {
                 document.getElementById("osc-labels").innerHTML = "Square";
                 break;
         }
+        try {
+            oscillator.triggerRelease(tone.now());
+            oscillator = oscsList[val];
+            oscillator.triggerAttack(frequency, tone.now() + 0.05);
+        }
+        catch (error) {
+            console.log(error);
+        }
     }
 
     const handleEffect = (effect) => {
-        //set effect innerHTML here
         if (effect.isOn === 1) {
             effect.set({wet: 0});
             effect.isOn = 0;
@@ -231,7 +241,16 @@ export const Synth = ({input, tone}) => {
         <div>
             <div>
                 <label id="osc-labels" htmlFor="osc-select">Sine</label>
-                <input id="osc-select" type="range" min="0" max="3" step="1" defaultValue="0" onInput={switchOsc}></input>
+                <input 
+                    id="osc-select" 
+                    data-testid="r" 
+                    type="range" 
+                    min="0" 
+                    max="3" 
+                    step="1" 
+                    defaultValue="0" 
+                    onInput={SwitchOsc}
+                    onChange={SwitchOsc}></input>
                 <p>Frequency: {frequency}Hz</p>
                 <p>Volume: {volume}db</p>
                 <p>Nearest Note: {notes[getNote(frequency)]}</p>
@@ -239,21 +258,24 @@ export const Synth = ({input, tone}) => {
             <div id="Effects">
                 <button id="Waveshaper" onClick={() => handleEffect(waveshaper)}>
                     Waveshaper: {waveshaper && waveshaper.isOn ? "On" : "Off"}
-                </button><br></br>
+                </button>{' '}
                 <button id="Distortion" onClick={() => handleEffect(distortion)}>
                     Distortion: {distortion && distortion.isOn ? "On" : "Off"}
-                </button><br></br>
+                </button>{' '}
                 <button id="Phaser" onClick={() => handleEffect(phaser)}>
                     Phaser: {phaser && phaser.isOn ? "On" : "Off"}
-                </button><br></br>
+                </button>{' '}
                 <button id="Chorus" onClick={() => handleEffect(chorus)}>
                     Chorus: {chorus && chorus.isOn ? "On" : "Off"}
                 </button><br></br>
                 <button id="Fixed" onClick={() => setIsFixed(!isFixed)}>
                     Used Fixed Frequency Tones: {isFixed ? "On" : "Off"}
-                </button><br></br>
+                </button>
             </div>
         </div>
     )
 
 }
+
+/*
+ */

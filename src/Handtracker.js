@@ -8,7 +8,7 @@ export class HandTracker {
             flipHorizontal: false,
             outputStride: 16,
             imageScaleFactor: 0.5,
-            maxNumBoxes: 3,
+            maxNumBoxes: 2,
             iouThreshold: 0.2,
             scoreThreshold: 0.5,
             modelType: "ssd320fpnlite",
@@ -21,6 +21,7 @@ export class HandTracker {
     }
 
     load() {
+        console.log(this);
         handTrack.load(this.params)
             .then(lmodel => {
                 this.model = lmodel
@@ -73,12 +74,11 @@ export class HandTracker {
                     }
                     if (results.c) {
                         this.setData("Paused");
-                    }
-                    else if (handsCount >= 2) {
-                        this.setData("LimHandsValueError");
+                        console.log("Paused");
                     }
                     else if (handsCount < 1) {
                         this.setData("SubHandsValueError");
+                        console.log("Not Enough Hands");
                     } 
                     else {
                         this.setData(results);
@@ -98,6 +98,6 @@ export class HandTracker {
         this.setIsPlaying(false)
         handTrack.stopVideo();
         this.setData("Paused");
-        console.log("Video Paused");
+        console.log("Stopped");
     }
 }

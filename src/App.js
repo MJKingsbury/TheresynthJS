@@ -16,9 +16,11 @@ const App = () => {
     navigator.mediaDevices.getUserMedia({video : true, audio: false})
       .then(stream => {
         video.srcObject = stream;
+        console.log(video);
         video.onloadedmetadata = () => {
           handtracker = new HandTracker(video, setData, setIsPlaying);
           handtracker.load();
+          console.log(handtracker);
         }
       })
   }, []);
@@ -39,7 +41,6 @@ const App = () => {
       case "ModelPredictionsError" :
         caption.innerHTML = "Loading...";
         break;
-      case "LimHandsValueError"    :
       case "SubHandsValueError"    :
         if (isPlaying) {
           caption.innerHTML = "Please Ensure Only One Hand Is Clearly Visible To Camera";
@@ -54,12 +55,12 @@ const App = () => {
         }
         break;
     }
+    console.log(caption.innerHTML);
   }, [data, isPlaying])
 
-  const handleClick = async () => {
+  const handleClick = async() => {
     if (!handtracker) return;
-    await Tone.start();
-    console.log("Audio Enabled");
+    if (!isPlaying) await Tone.start();
     isPlaying ? handtracker.stop() : handtracker.start();
   }
 
@@ -74,7 +75,7 @@ const App = () => {
           : <button onClick={handleClick}>Begin Capture</button> }
         </figure>
         </div>
-      <div>
+      <div style = {{position:"relative"}}>
         <Synth input={data} tone={Tone}></Synth>
       </div>
     </div>
